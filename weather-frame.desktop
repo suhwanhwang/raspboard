@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Weather Frame
+Exec=/home/pi/raspboard/start_weather.sh
+X-GNOME-Autostart-enabled=true 
