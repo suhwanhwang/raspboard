@@ -14,6 +14,7 @@ class WeatherFrame(tk.Tk):
         load_dotenv()
         self.api_key = os.getenv('OPENWEATHER_API_KEY')
         self.city = os.getenv('CITY', 'Seoul')  # Default city is Seoul
+        self.language = os.getenv('LANGUAGE', 'kr')  # Default language is Korean
 
         # Configure window
         self.title("Weather Frame")
@@ -151,8 +152,13 @@ class WeatherFrame(tk.Tk):
     def update_time(self):
         now = datetime.now()
         time_str = now.strftime("%I:%M %p")
-        weekday_kr = ['월', '화', '수', '목', '금', '토', '일']
-        date_str = now.strftime("%Y년 %m월 %d일 ") + weekday_kr[now.weekday()]
+        
+        if self.language == 'kr':
+            weekday_names = ['월', '화', '수', '목', '금', '토', '일']
+            date_str = now.strftime("%Y년 %m월 %d일 ") + weekday_names[now.weekday()]
+        else:
+            weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            date_str = now.strftime("%B %d, %Y ") + weekday_names[now.weekday()]
         
         self.time_label.config(text=time_str)
         self.date_label.config(text=date_str)
@@ -166,7 +172,7 @@ class WeatherFrame(tk.Tk):
 
         try:
             # Current weather
-            current_url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city}&appid={self.api_key}&units=metric&lang=kr"
+            current_url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city}&appid={self.api_key}&units=metric&lang={self.language}"
             current_response = requests.get(current_url)
             current_data = current_response.json()
 
@@ -193,7 +199,7 @@ class WeatherFrame(tk.Tk):
             self.icon_label.image = icon_photo
 
             # Weekly forecast
-            forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?q={self.city}&appid={self.api_key}&units=metric&lang=kr"
+            forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?q={self.city}&appid={self.api_key}&units=metric&lang={self.language}"
             forecast_response = requests.get(forecast_url)
             forecast_data = forecast_response.json()
 
@@ -205,9 +211,13 @@ class WeatherFrame(tk.Tk):
                     daily_forecasts[date] = item
 
             # Update forecast widgets
-            weekday_kr = ['월', '화', '수', '목', '금', '토', '일']
+            if self.language == 'kr':
+                weekday_names = ['월', '화', '수', '목', '금', '토', '일']
+            else:
+                weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
             for i, (date, day_data) in enumerate(list(daily_forecasts.items())[:7]):
-                day_name = weekday_kr[date.weekday()]
+                day_name = weekday_names[date.weekday()]
                 temp = round(day_data['main']['temp'])
                 icon_code = day_data['weather'][0]['icon']
 
