@@ -70,6 +70,26 @@ class WeatherFrame(tk.Tk):
         )
         self.temp_label.pack(side='left', padx=20)
 
+        # Min/Max temperature frame
+        minmax_frame = tk.Frame(current_weather_frame, bg='black')
+        minmax_frame.pack(side='left', padx=20)
+
+        self.temp_min_label = tk.Label(
+            minmax_frame,
+            font=('Helvetica', 36),
+            foreground='#4a90e2',  # Blue color for min temp
+            bg='black'
+        )
+        self.temp_min_label.pack()
+
+        self.temp_max_label = tk.Label(
+            minmax_frame,
+            font=('Helvetica', 36),
+            foreground='#e24a4a',  # Red color for max temp
+            bg='black'
+        )
+        self.temp_max_label.pack()
+
         # Weather icon label
         self.icon_label = tk.Label(
             current_weather_frame,
@@ -130,8 +150,8 @@ class WeatherFrame(tk.Tk):
 
     def update_time(self):
         now = datetime.now()
-        time_str = now.strftime("%H:%M:%S")
-        weekday_kr = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
+        time_str = now.strftime("%I:%M %p")
+        weekday_kr = ['월', '화', '수', '목', '금', '토', '일']
         date_str = now.strftime("%Y년 %m월 %d일 ") + weekday_kr[now.weekday()]
         
         self.time_label.config(text=time_str)
@@ -152,7 +172,12 @@ class WeatherFrame(tk.Tk):
 
             # Update current weather
             temp = round(current_data['main']['temp'])
+            temp_min = round(current_data['main']['temp_min'])
+            temp_max = round(current_data['main']['temp_max'])
+            
             self.temp_label.config(text=f"{temp}°C")
+            self.temp_min_label.config(text=f"↓{temp_min}°C")
+            self.temp_max_label.config(text=f"↑{temp_max}°C")
 
             desc = current_data['weather'][0]['description']
             self.desc_label.config(text=desc)
