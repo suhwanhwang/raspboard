@@ -9,6 +9,33 @@ A digital weather frame application for Raspberry Pi.
 - One-week weather forecast display
 - Fullscreen mode support
 - Multi-language support (English and Korean)
+- Modular and extensible architecture
+
+## Project Structure
+```
+raspboard/
+├── src/
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── weather_api.py      # Weather API interface
+│   │   └── openweather_api.py  # OpenWeather API implementation
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── weather_data.py     # Data models
+│   ├── ui/
+│   │   ├── __init__.py
+│   │   └── weather_widgets.py  # UI components
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py         # Configuration management
+│   ├── __init__.py
+│   └── main.py                 # Main application
+├── .env                        # Environment variables
+├── .env.example               # Example environment variables
+├── requirements.txt           # Python dependencies
+├── start_weather.sh          # Execution script
+└── weather-frame.desktop     # Auto-start configuration
+```
 
 ## Installation
 
@@ -52,7 +79,7 @@ cp .env.example .env
 
 With virtual environment activated:
 ```bash
-python weather_frame.py
+python -m src.main
 ```
 
 Or use the execution script:
@@ -81,6 +108,22 @@ cp weather-frame.desktop ~/.config/autostart/
 ## Program Termination
 - Press ESC key to exit the program.
 
+## Development
+
+### Adding a New Weather API
+The application is designed to be extensible. To add support for a new weather API:
+
+1. Create a new class in `src/api/` that implements the `WeatherAPI` interface
+2. Update the configuration to use the new API implementation
+3. The rest of the application will work with the new API without modification
+
+### Project Organization
+- `src/api/`: Contains API interfaces and implementations
+- `src/models/`: Contains data models and data processing logic
+- `src/ui/`: Contains UI components and layout management
+- `src/config/`: Contains configuration management
+- `src/main.py`: Main application entry point
+
 ## Notes
 - Internet connection is required to run the program.
 - Adjust Raspberry Pi's power management settings to prevent screen from turning off.
@@ -91,4 +134,5 @@ cp weather-frame.desktop ~/.config/autostart/
 - If Korean text is not displayed: Check if Nanum font is installed
 - If weather information is not displayed: Verify API key and internet connection
 - If auto-start is not working: Check path configuration and execution permissions
-- If language is not changing: Verify the `LANGUAGE` value in `.env` file is set to either 'en' or 'kr' 
+- If language is not changing: Verify the `LANGUAGE` value in `.env` file is set to either 'en' or 'kr'
+- If module import errors occur: Ensure you're running the application from the project root directory 

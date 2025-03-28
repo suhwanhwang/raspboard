@@ -7,4 +7,4 @@ cd /home/pi/raspboard
 source .venv/bin/activate
 
 # Start the weather program
-python weather_frame.py 
+python -m src.main 
