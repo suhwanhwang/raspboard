@@ -45,47 +45,32 @@ git clone [repository-url]
 cd raspboard
 ```
 
-2. Create and activate virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-3. Install required packages:
-```bash
-pip install -r requirements.txt
-```
-
-4. Install Korean font (if using Korean language):
+2. Install Korean font (if using Korean language):
 ```bash
 sudo apt-get update
 sudo apt-get install fonts-nanum
 ```
 
-5. Get OpenWeatherMap API key:
+3. Get OpenWeatherMap API key:
 - Sign up at [OpenWeatherMap](https://openweathermap.org/)
 - Get your API key
 
-6. Set up environment variables:
-- Create `.env` file
-```bash
-cp .env.example .env
-```
-- Enter your API key in the `OPENWEATHER_API_KEY` field in `.env` file
-- Change `CITY` value to your desired city (default: Seoul)
-- Set `LANGUAGE` value to either 'en' for English or 'kr' for Korean (default: kr)
+4. Set up environment variables:
+- Edit `.env` file with your settings:
+  - `OPENWEATHER_API_KEY`: Your OpenWeather API key
+  - `CITY`: Your desired city (default: Seoul)
+  - `LANGUAGE`: 'en' for English or 'kr' for Korean (default: kr)
 
-## Manual Execution
-
-With virtual environment activated:
-```bash
-python -m src.main
-```
-
-Or use the execution script:
+5. Run the application:
 ```bash
 ./start_weather.sh
 ```
+
+The script will automatically:
+- Create a virtual environment if it doesn't exist
+- Install required packages
+- Create `.env` file from example if it doesn't exist
+- Start the weather frame application
 
 ## Auto-start Configuration
 
@@ -100,10 +85,13 @@ mkdir -p ~/.config/autostart
 cp weather-frame.desktop ~/.config/autostart/
 ```
 
-3. Path configuration:
-- Modify the project path in `start_weather.sh` and `weather-frame.desktop` files to match your actual installation path
-  - Default path is set to `/home/pi/raspboard`
-  - If installed in a different location, update the paths in these files accordingly
+3. Configure the desktop entry:
+- Edit `~/.config/autostart/weather-frame.desktop`
+- Update the `Exec` line with the full path to your `start_weather.sh`:
+  ```ini
+  Exec=/full/path/to/your/raspboard/start_weather.sh
+  ```
+  Replace `/full/path/to/your/raspboard` with the actual path where you installed the project.
 
 ## Program Termination
 - Press ESC key to exit the program.
@@ -133,6 +121,6 @@ The application is designed to be extensible. To add support for a new weather A
 ## Troubleshooting
 - If Korean text is not displayed: Check if Nanum font is installed
 - If weather information is not displayed: Verify API key and internet connection
-- If auto-start is not working: Check path configuration and execution permissions
+- If auto-start is not working: Check execution permissions and verify the path in the .desktop file
 - If language is not changing: Verify the `LANGUAGE` value in `.env` file is set to either 'en' or 'kr'
 - If module import errors occur: Ensure you're running the application from the project root directory 
