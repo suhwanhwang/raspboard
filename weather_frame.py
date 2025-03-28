@@ -40,23 +40,26 @@ class WeatherFrame(tk.Tk):
         self.after(1000, self.update_time)  # Update time every second
 
     def create_widgets(self):
+        # Create main container frame for centering
+        self.container_frame = tk.Frame(self.main_frame, bg='black')
+        self.container_frame.place(relx=0.5, rely=0.5, anchor='center')
+        
         self.create_time_widgets()
         self.create_weather_widgets()
-        self.create_forecast_widgets()
 
     def create_time_widgets(self):
         # Date label
         self.date_label = tk.Label(
-            self.main_frame,
+            self.container_frame,
             font=('Helvetica', 48),
             foreground='white',
             bg='black'
         )
-        self.date_label.pack(pady=10)
+        self.date_label.pack(pady=20)
 
         # Time label
         self.time_label = tk.Label(
-            self.main_frame,
+            self.container_frame,
             font=('Helvetica', 96),
             foreground='white',
             bg='black'
@@ -65,7 +68,7 @@ class WeatherFrame(tk.Tk):
 
     def create_weather_widgets(self):
         # Current weather frame
-        current_weather_frame = tk.Frame(self.main_frame, bg='black')
+        current_weather_frame = tk.Frame(self.container_frame, bg='black')
         current_weather_frame.pack(pady=20)
 
         # Temperature label
@@ -95,7 +98,7 @@ class WeatherFrame(tk.Tk):
             foreground='white',
             bg='black'
         )
-        self.desc_label.pack()
+        self.desc_label.pack(pady=10)
 
         # Air quality label
         self.air_quality_label = tk.Label(
@@ -104,20 +107,19 @@ class WeatherFrame(tk.Tk):
             foreground='white',
             bg='black'
         )
-        self.air_quality_label.pack()
+        self.air_quality_label.pack(pady=10)
 
-    def create_forecast_widgets(self):
         # Weekly forecast frame
-        self.forecast_frame = tk.Frame(self.main_frame, bg='black')
-        self.forecast_frame.pack(side='bottom', fill='x', pady=20)
+        self.forecast_frame = tk.Frame(self.container_frame, bg='black')
+        self.forecast_frame.pack(pady=20)
 
         # Create a container frame for centering
         forecast_container = tk.Frame(self.forecast_frame, bg='black')
         forecast_container.pack(expand=True)
         
-        # Create 7 day forecast widgets
+        # Create 5 day forecast widgets
         self.forecast_widgets = []
-        for i in range(7):
+        for i in range(5):
             day_frame = tk.Frame(forecast_container, bg='black')
             day_frame.pack(side='left', padx=10)
             
