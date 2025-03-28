@@ -105,12 +105,12 @@ class WeatherFrame(tk.Tk):
 
         # Weather description label
         self.desc_label = tk.Label(
-            self.main_frame,
+            current_weather_frame,
             font=('Helvetica', 48),
             foreground='white',
             bg='black'
         )
-        self.desc_label.pack(pady=10)
+        self.desc_label.pack(side='left', padx=20)
 
         # Weekly forecast frame
         self.forecast_frame = tk.Frame(self.main_frame, bg='black')
