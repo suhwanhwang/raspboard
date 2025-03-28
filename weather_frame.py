@@ -16,6 +16,11 @@ class WeatherFrame(tk.Tk):
         self.city = os.getenv('CITY', 'Seoul')  # Default city is Seoul
         self.language = os.getenv('LANGUAGE', 'kr')  # Default language is Korean
 
+        if not self.api_key:
+            print("Error: OpenWeather API key not found in .env file!")
+            self.quit()
+            return
+
         # Configure window
         self.title("Weather Frame")
         self.attributes('-fullscreen', True)
@@ -119,11 +124,11 @@ class WeatherFrame(tk.Tk):
         self.forecast_widgets = []
         for i in range(7):
             day_frame = tk.Frame(forecast_container, bg='black')
-            day_frame.pack(side='left', padx=20)
+            day_frame.pack(side='left', padx=10)  # Reduced padding
             
             day_label = tk.Label(
                 day_frame,
-                font=('Helvetica', 24),
+                font=('Helvetica', 20),  # Reduced font size
                 foreground='white',
                 bg='black'
             )
@@ -133,11 +138,11 @@ class WeatherFrame(tk.Tk):
                 day_frame,
                 bg='black'
             )
-            icon_label.pack(pady=5)
+            icon_label.pack(pady=2)  # Reduced padding
             
             temp_label = tk.Label(
                 day_frame,
-                font=('Helvetica', 24),
+                font=('Helvetica', 20),  # Reduced font size
                 foreground='white',
                 bg='black'
             )
@@ -166,15 +171,21 @@ class WeatherFrame(tk.Tk):
         self.after(1000, self.update_time)
 
     def update_weather(self):
-        if not self.api_key:
-            print("Error: OpenWeather API key not found!")
-            return
-
         try:
             # Current weather
             current_url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city}&appid={self.api_key}&units=metric&lang={self.language}"
             current_response = requests.get(current_url)
+            
+            if current_response.status_code != 200:
+                print(f"Error: API request failed with status code {current_response.status_code}")
+                print(f"Response: {current_response.text}")
+                return
+                
             current_data = current_response.json()
+            
+            if 'main' not in current_data:
+                print(f"Error: Invalid API response format. Response: {current_data}")
+                return
 
             # Update current weather
             temp = round(current_data['main']['temp'])
@@ -185,6 +196,10 @@ class WeatherFrame(tk.Tk):
             self.temp_min_label.config(text=f"↓{temp_min}°C")
             self.temp_max_label.config(text=f"↑{temp_max}°C")
 
+            if 'weather' not in current_data or not current_data['weather']:
+                print("Error: Weather data not found in API response")
+                return
+
             desc = current_data['weather'][0]['description']
             self.desc_label.config(text=desc)
 
@@ -192,6 +207,10 @@ class WeatherFrame(tk.Tk):
             icon_url = f"http://openweathermap.org/img/wn/{icon_code}@4x.png"  # Using larger icons
             
             icon_response = requests.get(icon_url)
+            if icon_response.status_code != 200:
+                print(f"Error: Failed to fetch weather icon. Status code: {icon_response.status_code}")
+                return
+                
             icon_image = Image.open(io.BytesIO(icon_response.content))
             icon_photo = ImageTk.PhotoImage(icon_image)
             
@@ -201,7 +220,17 @@ class WeatherFrame(tk.Tk):
             # Weekly forecast
             forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?q={self.city}&appid={self.api_key}&units=metric&lang={self.language}"
             forecast_response = requests.get(forecast_url)
+            
+            if forecast_response.status_code != 200:
+                print(f"Error: Forecast API request failed with status code {forecast_response.status_code}")
+                print(f"Response: {forecast_response.text}")
+                return
+                
             forecast_data = forecast_response.json()
+            
+            if 'list' not in forecast_data:
+                print(f"Error: Invalid forecast API response format. Response: {forecast_data}")
+                return
 
             # Process forecast data (get one forecast per day)
             daily_forecasts = {}
@@ -227,6 +256,10 @@ class WeatherFrame(tk.Tk):
                 # Update icon
                 icon_url = f"http://openweathermap.org/img/wn/{icon_code}@2x.png"
                 icon_response = requests.get(icon_url)
+                if icon_response.status_code != 200:
+                    print(f"Error: Failed to fetch forecast icon. Status code: {icon_response.status_code}")
+                    continue
+                    
                 icon_image = Image.open(io.BytesIO(icon_response.content))
                 icon_photo = ImageTk.PhotoImage(icon_image)
                 
@@ -234,7 +267,8 @@ class WeatherFrame(tk.Tk):
                 self.forecast_widgets[i]['icon'].image = icon_photo  # Keep a reference
 
         except Exception as e:
-            print(f"Error updating weather: {e}")
+            print(f"Error updating weather: {str(e)}")
+            print(f"Full error details: {type(e).__name__}")
 
         self.after(300000, self.update_weather)  # Update every 5 minutes
 
