@@ -103,14 +103,27 @@ class WeatherFrame(tk.Tk):
         )
         self.icon_label.pack(side='left', padx=20)
 
+        # Weather info frame (for description and air quality)
+        weather_info_frame = tk.Frame(current_weather_frame, bg='black')
+        weather_info_frame.pack(side='left', padx=20)
+
         # Weather description label
         self.desc_label = tk.Label(
-            current_weather_frame,
+            weather_info_frame,
             font=('Helvetica', 48),
             foreground='white',
             bg='black'
         )
-        self.desc_label.pack(side='left', padx=20)
+        self.desc_label.pack()
+
+        # Air quality label
+        self.air_quality_label = tk.Label(
+            weather_info_frame,
+            font=('Helvetica', 36),
+            foreground='white',
+            bg='black'
+        )
+        self.air_quality_label.pack()
 
         # Weekly forecast frame
         self.forecast_frame = tk.Frame(self.main_frame, bg='black')
@@ -153,6 +166,42 @@ class WeatherFrame(tk.Tk):
                 'icon': icon_label,
                 'temp': temp_label
             })
+
+    def get_air_quality_text(self, aqi):
+        if self.language == 'kr':
+            if aqi == 1:
+                return "좋음"
+            elif aqi == 2:
+                return "보통"
+            elif aqi == 3:
+                return "나쁨"
+            elif aqi == 4:
+                return "매우 나쁨"
+            else:
+                return "위험"
+        else:
+            if aqi == 1:
+                return "Good"
+            elif aqi == 2:
+                return "Fair"
+            elif aqi == 3:
+                return "Poor"
+            elif aqi == 4:
+                return "Very Poor"
+            else:
+                return "Hazardous"
+
+    def get_air_quality_color(self, aqi):
+        if aqi == 1:
+            return '#4CAF50'  # Green
+        elif aqi == 2:
+            return '#FFC107'  # Yellow
+        elif aqi == 3:
+            return '#FF9800'  # Orange
+        elif aqi == 4:
+            return '#F44336'  # Red
+        else:
+            return '#9C27B0'  # Purple
 
     def update_time(self):
         now = datetime.now()
@@ -216,6 +265,28 @@ class WeatherFrame(tk.Tk):
             
             self.icon_label.config(image=icon_photo)
             self.icon_label.image = icon_photo
+
+            # Get air quality data
+            air_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={current_data['coord']['lat']}&lon={current_data['coord']['lon']}&appid={self.api_key}"
+            air_response = requests.get(air_url)
+            
+            if air_response.status_code == 200:
+                air_data = air_response.json()
+                if 'list' in air_data and air_data['list']:
+                    aqi = air_data['list'][0]['main']['aqi']
+                    aqi_text = self.get_air_quality_text(aqi)
+                    aqi_color = self.get_air_quality_color(aqi)
+                    
+                    if self.language == 'kr':
+                        self.air_quality_label.config(
+                            text=f"대기질: {aqi_text}",
+                            foreground=aqi_color
+                        )
+                    else:
+                        self.air_quality_label.config(
+                            text=f"Air Quality: {aqi_text}",
+                            foreground=aqi_color
+                        )
 
             # Weekly forecast
             forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?q={self.city}&appid={self.api_key}&units=metric&lang={self.language}"
