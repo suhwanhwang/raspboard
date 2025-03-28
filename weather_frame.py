@@ -76,26 +76,6 @@ class WeatherFrame(tk.Tk):
         )
         self.temp_label.pack(side='left', padx=20)
 
-        # Min/Max temperature frame
-        minmax_frame = tk.Frame(current_weather_frame, bg='black')
-        minmax_frame.pack(side='left', padx=20)
-
-        self.temp_min_label = tk.Label(
-            minmax_frame,
-            font=('Helvetica', 36),
-            foreground='#4a90e2',  # Blue color for min temp
-            bg='black'
-        )
-        self.temp_min_label.pack()
-
-        self.temp_max_label = tk.Label(
-            minmax_frame,
-            font=('Helvetica', 36),
-            foreground='#e24a4a',  # Red color for max temp
-            bg='black'
-        )
-        self.temp_max_label.pack()
-
         # Weather icon label
         self.icon_label = tk.Label(
             current_weather_frame,
@@ -238,12 +218,7 @@ class WeatherFrame(tk.Tk):
 
             # Update current weather
             temp = round(current_data['main']['temp'])
-            temp_min = round(current_data['main']['temp_min'])
-            temp_max = round(current_data['main']['temp_max'])
-            
             self.temp_label.config(text=f"{temp}°C")
-            self.temp_min_label.config(text=f"↓{temp_min}°C")
-            self.temp_max_label.config(text=f"↑{temp_max}°C")
 
             if 'weather' not in current_data or not current_data['weather']:
                 print("Error: Weather data not found in API response")
@@ -307,8 +282,28 @@ class WeatherFrame(tk.Tk):
             daily_forecasts = {}
             for item in forecast_data['list']:
                 date = datetime.fromtimestamp(item['dt']).date()
-                if date not in daily_forecasts and len(daily_forecasts) < 7:
-                    daily_forecasts[date] = item
+                if date not in daily_forecasts:
+                    daily_forecasts[date] = {
+                        'temp': item['main']['temp'],
+                        'temp_min': item['main']['temp_min'],
+                        'temp_max': item['main']['temp_max'],
+                        'weather': item['weather'][0],
+                        'dt': item['dt']
+                    }
+                else:
+                    # Update min/max temperatures
+                    daily_forecasts[date]['temp_min'] = min(daily_forecasts[date]['temp_min'], item['main']['temp_min'])
+                    daily_forecasts[date]['temp_max'] = max(daily_forecasts[date]['temp_max'], item['main']['temp_max'])
+                    # Update weather if it's during daytime (between 9 AM and 6 PM)
+                    hour = datetime.fromtimestamp(item['dt']).hour
+                    if 9 <= hour <= 18:
+                        daily_forecasts[date]['weather'] = item['weather'][0]
+                        daily_forecasts[date]['temp'] = item['main']['temp']
+                        daily_forecasts[date]['dt'] = item['dt']
+
+            if 'weather' not in current_data or not current_data['weather']:
+                print("Error: Weather data not found in API response")
+                return
 
             # Update forecast widgets
             if self.language == 'kr':
@@ -316,10 +311,10 @@ class WeatherFrame(tk.Tk):
             else:
                 weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-            for i, (date, day_data) in enumerate(list(daily_forecasts.items())[:7]):
+            for i, (date, day_data) in enumerate(daily_forecasts.items()):
                 day_name = weekday_names[date.weekday()]
-                temp = round(day_data['main']['temp'])
-                icon_code = day_data['weather'][0]['icon']
+                temp = round(day_data['temp'])
+                icon_code = day_data['weather']['icon']
 
                 self.forecast_widgets[i]['day'].config(text=day_name)
                 self.forecast_widgets[i]['temp'].config(text=f"{temp}°C")
