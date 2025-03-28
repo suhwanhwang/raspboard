@@ -45,15 +45,6 @@ class WeatherFrame(tk.Tk):
         self.create_forecast_widgets()
 
     def create_time_widgets(self):
-        # Time label
-        self.time_label = tk.Label(
-            self.main_frame,
-            font=('Helvetica', 96),
-            foreground='white',
-            bg='black'
-        )
-        self.time_label.pack(pady=20)
-
         # Date label
         self.date_label = tk.Label(
             self.main_frame,
@@ -62,6 +53,15 @@ class WeatherFrame(tk.Tk):
             bg='black'
         )
         self.date_label.pack(pady=10)
+
+        # Time label
+        self.time_label = tk.Label(
+            self.main_frame,
+            font=('Helvetica', 96),
+            foreground='white',
+            bg='black'
+        )
+        self.time_label.pack(pady=20)
 
     def create_weather_widgets(self):
         # Current weather frame
@@ -135,18 +135,30 @@ class WeatherFrame(tk.Tk):
             )
             icon_label.pack(pady=2)
             
-            temp_label = tk.Label(
-                day_frame,
+            minmax_frame = tk.Frame(day_frame, bg='black')
+            minmax_frame.pack()
+            
+            temp_min_label = tk.Label(
+                minmax_frame,
                 font=('Helvetica', 20),
-                foreground='white',
+                foreground='#4a90e2',
                 bg='black'
             )
-            temp_label.pack()
+            temp_min_label.pack(side='left', padx=2)
+            
+            temp_max_label = tk.Label(
+                minmax_frame,
+                font=('Helvetica', 20),
+                foreground='#e24a4a',
+                bg='black'
+            )
+            temp_max_label.pack(side='left', padx=2)
             
             self.forecast_widgets.append({
                 'day': day_label,
                 'icon': icon_label,
-                'temp': temp_label
+                'temp_min': temp_min_label,
+                'temp_max': temp_max_label
             })
 
     def update_time(self):
@@ -303,11 +315,13 @@ class WeatherFrame(tk.Tk):
 
         for i, (date, day_data) in enumerate(list(daily_forecasts.items())[:7]):
             day_name = weekday_names[date.weekday()]
-            temp = round(day_data['temp'])
+            temp_min = round(day_data['temp_min'])
+            temp_max = round(day_data['temp_max'])
             icon_code = day_data['weather']['icon']
 
             self.forecast_widgets[i]['day'].config(text=day_name)
-            self.forecast_widgets[i]['temp'].config(text=f"{temp}°C")
+            self.forecast_widgets[i]['temp_min'].config(text=f"↓{temp_min}°")
+            self.forecast_widgets[i]['temp_max'].config(text=f"↑{temp_max}°")
             self.update_weather_icon(icon_code, self.forecast_widgets[i]['icon'])
 
     def get_air_quality_text(self, aqi):
