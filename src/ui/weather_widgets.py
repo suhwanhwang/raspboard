@@ -24,7 +24,7 @@ class WeatherWidgets:
         # Date label
         self.date_label = tk.Label(
             self.container_frame,
-            font=('Helvetica', 48),
+            font=('Helvetica', 60),
             foreground='white',
             bg='black'
         )
@@ -76,7 +76,7 @@ class WeatherWidgets:
         # Air quality label
         self.air_quality_label = tk.Label(
             weather_info_frame,
-            font=('Helvetica', 36),
+            font=('Helvetica', 48),
             foreground='white',
             bg='black'
         )
@@ -158,17 +158,14 @@ class WeatherWidgets:
 
         # Update air quality
         aqi_text = self.get_air_quality_text(weather_data.current.air_quality)
-        aqi_color = self.get_air_quality_color(weather_data.current.air_quality)
         
         if self.language == 'kr':
             self.air_quality_label.config(
-                text=f"대기질: {aqi_text}",
-                foreground=aqi_color
+                text=f"대기질: {aqi_text}"
             )
         else:
             self.air_quality_label.config(
-                text=f"Air Quality: {aqi_text}",
-                foreground=aqi_color
+                text=f"Air Quality: {aqi_text}"
             )
 
         # Update forecast
