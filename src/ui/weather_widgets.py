@@ -90,8 +90,8 @@ class WeatherWidgets:
         # Min temperature label
         self.temp_min_label = tk.Label(
             temp_range_frame,
-            font=('Helvetica', 84),
-            foreground='#4a90e2',
+            font=('Helvetica', 96),
+            foreground='#00bfff',  # Brighter blue
             bg='black'
         )
         self.temp_min_label.pack(side='left', padx=20)
@@ -99,8 +99,8 @@ class WeatherWidgets:
         # Max temperature label
         self.temp_max_label = tk.Label(
             temp_range_frame,
-            font=('Helvetica', 84),
-            foreground='#e24a4a',
+            font=('Helvetica', 96),
+            foreground='#ff4d4d',  # Brighter red
             bg='black'
         )
         self.temp_max_label.pack(side='left', padx=20)
