@@ -67,7 +67,7 @@ class WeatherWidgets:
         # Weather description label
         self.desc_label = tk.Label(
             weather_info_frame,
-            font=('Helvetica', 48),
+            font=('Helvetica', 60),
             foreground='white',
             bg='black'
         )
@@ -76,7 +76,7 @@ class WeatherWidgets:
         # Air quality label
         self.air_quality_label = tk.Label(
             weather_info_frame,
-            font=('Helvetica', 48),
+            font=('Helvetica', 60),
             foreground='white',
             bg='black'
         )
@@ -90,7 +90,7 @@ class WeatherWidgets:
         # Min temperature label
         self.temp_min_label = tk.Label(
             temp_range_frame,
-            font=('Helvetica', 72),
+            font=('Helvetica', 84),
             foreground='#4a90e2',
             bg='black'
         )
@@ -99,7 +99,7 @@ class WeatherWidgets:
         # Max temperature label
         self.temp_max_label = tk.Label(
             temp_range_frame,
-            font=('Helvetica', 72),
+            font=('Helvetica', 84),
             foreground='#e24a4a',
             bg='black'
         )
