@@ -24,7 +24,7 @@ class WeatherWidgets:
         # Date label
         self.date_label = tk.Label(
             self.container_frame,
-            font=('Helvetica', 60),
+            font=('Helvetica', 72),
             foreground='white',
             bg='black'
         )
