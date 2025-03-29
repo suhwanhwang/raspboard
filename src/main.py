@@ -24,6 +24,8 @@ class WeatherFrame(tk.Tk):
         self.main_frame = tk.Frame(self, bg='black')
         self.main_frame.pack(expand=True, fill='both')
         self.bind('<Escape>', lambda e: self.quit())
+        # Hide mouse cursor
+        self.config(cursor="none")
 
     def create_widgets(self):
         self.weather_widgets = WeatherWidgets(self.main_frame, self.settings.language)

@@ -18,7 +18,7 @@ class WeatherWidgets:
         
         self.create_time_widgets()
         self.create_weather_widgets()
-        self.create_forecast_widgets()
+        self.create_temperature_range_widgets()
 
     def create_time_widgets(self):
         # Date label
@@ -82,60 +82,50 @@ class WeatherWidgets:
         )
         self.air_quality_label.pack(pady=10)
 
-    def create_forecast_widgets(self):
-        # Weekly forecast frame
-        self.forecast_frame = tk.Frame(self.container_frame, bg='black')
-        self.forecast_frame.pack(pady=20)
+    def create_temperature_range_widgets(self):
+        # Temperature range frame
+        temp_range_frame = tk.Frame(self.container_frame, bg='black')
+        temp_range_frame.pack(pady=20)
 
-        # Create a container frame for centering
-        forecast_container = tk.Frame(self.forecast_frame, bg='black')
-        forecast_container.pack(expand=True)
-        
-        # Create 5 day forecast widgets
-        self.forecast_widgets = []
-        for i in range(5):
-            day_frame = tk.Frame(forecast_container, bg='black')
-            day_frame.pack(side='left', padx=10)
-            
-            day_label = tk.Label(
-                day_frame,
-                font=('Helvetica', 20),
-                foreground='white',
-                bg='black'
-            )
-            day_label.pack()
-            
-            icon_label = tk.Label(
-                day_frame,
-                bg='black'
-            )
-            icon_label.pack(pady=2)
-            
-            minmax_frame = tk.Frame(day_frame, bg='black')
-            minmax_frame.pack()
-            
-            temp_min_label = tk.Label(
-                minmax_frame,
-                font=('Helvetica', 20),
-                foreground='#4a90e2',
-                bg='black'
-            )
-            temp_min_label.pack(side='left', padx=2)
-            
-            temp_max_label = tk.Label(
-                minmax_frame,
-                font=('Helvetica', 20),
-                foreground='#e24a4a',
-                bg='black'
-            )
-            temp_max_label.pack(side='left', padx=2)
-            
-            self.forecast_widgets.append({
-                'day': day_label,
-                'icon': icon_label,
-                'temp_min': temp_min_label,
-                'temp_max': temp_max_label
-            })
+        # Min temperature label
+        self.temp_min_label = tk.Label(
+            temp_range_frame,
+            font=('Helvetica', 72),
+            foreground='#4a90e2',
+            bg='black'
+        )
+        self.temp_min_label.pack(side='left', padx=20)
+
+        # Max temperature label
+        self.temp_max_label = tk.Label(
+            temp_range_frame,
+            font=('Helvetica', 72),
+            foreground='#e24a4a',
+            bg='black'
+        )
+        self.temp_max_label.pack(side='left', padx=20)
+
+        # Precipitation info frame
+        precip_frame = tk.Frame(temp_range_frame, bg='black')
+        precip_frame.pack(side='left', padx=20)
+
+        # Rain amount label
+        self.rain_label = tk.Label(
+            precip_frame,
+            font=('Helvetica', 72),
+            foreground='#4a90e2',
+            bg='black'
+        )
+        self.rain_label.pack(side='left', padx=10)
+
+        # Snow amount label
+        self.snow_label = tk.Label(
+            precip_frame,
+            font=('Helvetica', 72),
+            foreground='#ffffff',
+            bg='black'
+        )
+        self.snow_label.pack(side='left', padx=10)
 
     def update_time(self, now):
         time_str = now.strftime("%I:%M %p")
@@ -163,13 +153,40 @@ class WeatherWidgets:
             self.air_quality_label.config(
                 text=f"대기질: {aqi_text}"
             )
+            # Update precipitation amounts
+            if weather_data.current.rain_amount > 0:
+                rain_intensity = self.get_rain_intensity_text(weather_data.current.rain_amount)
+                self.rain_label.config(text=f"🌧️ {rain_intensity}")
+            else:
+                self.rain_label.config(text="")
+            
+            if weather_data.current.snow_amount > 0:
+                snow_intensity = self.get_snow_intensity_text(weather_data.current.snow_amount)
+                self.snow_label.config(text=f"🌨️ {snow_intensity}")
+            else:
+                self.snow_label.config(text="")
         else:
             self.air_quality_label.config(
                 text=f"Air Quality: {aqi_text}"
             )
+            # Update precipitation amounts
+            if weather_data.current.rain_amount > 0:
+                rain_intensity = self.get_rain_intensity_text(weather_data.current.rain_amount)
+                self.rain_label.config(text=f"🌧️ {rain_intensity}")
+            else:
+                self.rain_label.config(text="")
+            
+            if weather_data.current.snow_amount > 0:
+                snow_intensity = self.get_snow_intensity_text(weather_data.current.snow_amount)
+                self.snow_label.config(text=f"🌨️ {snow_intensity}")
+            else:
+                self.snow_label.config(text="")
 
-        # Update forecast
-        self.update_forecast_widgets(weather_data.forecast)
+        # Update temperature range for the first day of forecast
+        if weather_data.forecast and len(weather_data.forecast) > 0:
+            first_day = weather_data.forecast[0]
+            self.temp_min_label.config(text=f"↓{round(first_day.temp_min)}°")
+            self.temp_max_label.config(text=f"↑{round(first_day.temp_max)}°")
 
     def update_weather_icon(self, icon_code: str, label: tk.Label, size: str = '2x'):
         icon_url = f"http://openweathermap.org/img/wn/{icon_code}@{size}.png"
@@ -183,23 +200,6 @@ class WeatherWidgets:
         
         label.config(image=icon_photo)
         label.image = icon_photo  # Keep a reference
-
-    def update_forecast_widgets(self, forecast_data: List[Any]):
-        if self.language == 'kr':
-            weekday_names = ['월', '화', '수', '목', '금', '토', '일']
-        else:
-            weekday_names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-        for i, day_data in enumerate(forecast_data[:5]):
-            day_name = weekday_names[day_data.date.weekday()]
-            temp_min = round(day_data.temp_min)
-            temp_max = round(day_data.temp_max)
-            icon_code = day_data.weather.icon
-
-            self.forecast_widgets[i]['day'].config(text=day_name)
-            self.forecast_widgets[i]['temp_min'].config(text=f"↓{temp_min}°")
-            self.forecast_widgets[i]['temp_max'].config(text=f"↑{temp_max}°")
-            self.update_weather_icon(icon_code, self.forecast_widgets[i]['icon'])
 
     def get_air_quality_text(self, aqi: int) -> str:
         if self.language == 'kr':
@@ -235,4 +235,40 @@ class WeatherWidgets:
         elif aqi == 4:
             return '#F44336'  # Red
         else:
-            return '#9C27B0'  # Purple 
+            return '#9C27B0'  # Purple
+
+    def get_rain_intensity_text(self, rain_amount: float) -> str:
+        if self.language == 'kr':
+            if rain_amount < 0.1:
+                return "가랑비"
+            elif rain_amount < 2:
+                return "약한비"
+            elif rain_amount < 10:
+                return "보통비"
+            else:
+                return "굵은비"
+        else:
+            if rain_amount < 0.1:
+                return "Drizzle"
+            elif rain_amount < 2:
+                return "Light Rain"
+            elif rain_amount < 10:
+                return "Moderate Rain"
+            else:
+                return "Heavy Rain"
+
+    def get_snow_intensity_text(self, snow_amount: float) -> str:
+        if self.language == 'kr':
+            if snow_amount < 0.1:
+                return "가벼운눈"
+            elif snow_amount < 2:
+                return "약한눈"
+            else:
+                return "굵은눈"
+        else:
+            if snow_amount < 0.1:
+                return "Light Snow"
+            elif snow_amount < 2:
+                return "Moderate Snow"
+            else:
+                return "Heavy Snow" 
