@@ -28,4 +28,5 @@ if [ ! -f ".env" ]; then
 fi
 
 # Start the weather program
+sleep 10 # wait seconds for destop loading
 python -m src.main 
