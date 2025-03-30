@@ -6,7 +6,6 @@ A digital weather frame application for Raspberry Pi.
 - Current time and date display
 - Current weather information display (temperature, weather condition, icon)
 - Automatic weather updates every 5 minutes
-- One-week weather forecast display
 - Fullscreen mode support
 - Multi-language support (English and Korean)
 - Modular and extensible architecture
