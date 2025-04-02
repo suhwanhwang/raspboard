@@ -148,37 +148,34 @@ class WeatherWidgets:
 
         # Update air quality
         aqi_text = self.get_air_quality_text(weather_data.current.air_quality)
-        
+        aqi_icon = self.get_air_quality_icon(weather_data.current.air_quality)
+
         if self.language == 'kr':
             self.air_quality_label.config(
-                text=f"대기질: {aqi_text}"
+                text=f"대기질: {aqi_icon} {aqi_text}"
             )
             # Update precipitation amounts
             if weather_data.current.rain_amount > 0:
-                rain_intensity = self.get_rain_intensity_text(weather_data.current.rain_amount)
-                self.rain_label.config(text=f"🌧️ {rain_intensity}")
+                self.rain_label.config(text=f"🌧️ {weather_data.current.rain_amount:.1f}㎜/h")
             else:
                 self.rain_label.config(text="")
             
             if weather_data.current.snow_amount > 0:
-                snow_intensity = self.get_snow_intensity_text(weather_data.current.snow_amount)
-                self.snow_label.config(text=f"🌨️ {snow_intensity}")
+                self.snow_label.config(text=f"🌨️ {weather_data.current.snow_amount:.1f}㎜/h")
             else:
                 self.snow_label.config(text="")
         else:
             self.air_quality_label.config(
-                text=f"Air Quality: {aqi_text}"
+                text=f"Air Quality: {aqi_icon} {aqi_text}"
             )
             # Update precipitation amounts
             if weather_data.current.rain_amount > 0:
-                rain_intensity = self.get_rain_intensity_text(weather_data.current.rain_amount)
-                self.rain_label.config(text=f"🌧️ {rain_intensity}")
+                self.rain_label.config(text=f"🌧️ {weather_data.current.rain_amount:.1f}㎜/h")
             else:
                 self.rain_label.config(text="")
             
             if weather_data.current.snow_amount > 0:
-                snow_intensity = self.get_snow_intensity_text(weather_data.current.snow_amount)
-                self.snow_label.config(text=f"🌨️ {snow_intensity}")
+                self.snow_label.config(text=f"🌨️ {weather_data.current.snow_amount:.1f}㎜/h")
             else:
                 self.snow_label.config(text="")
 
@@ -237,38 +234,14 @@ class WeatherWidgets:
         else:
             return '#9C27B0'  # Purple
 
-    def get_rain_intensity_text(self, rain_amount: float) -> str:
-        if self.language == 'kr':
-            if rain_amount < 0.1:
-                return "가랑비"
-            elif rain_amount < 2:
-                return "약한비"
-            elif rain_amount < 10:
-                return "보통비"
-            else:
-                return "굵은비"
+    def get_air_quality_icon(self, aqi: int) -> str:
+        if aqi == 1:
+            return "😊"  # 좋음
+        elif aqi == 2:
+            return "😐"  # 보통
+        elif aqi == 3:
+            return "😷"  # 나쁨
+        elif aqi == 4:
+            return "🤢"  # 매우 나쁨
         else:
-            if rain_amount < 0.1:
-                return "Drizzle"
-            elif rain_amount < 2:
-                return "Light Rain"
-            elif rain_amount < 10:
-                return "Moderate Rain"
-            else:
-                return "Heavy Rain"
-
-    def get_snow_intensity_text(self, snow_amount: float) -> str:
-        if self.language == 'kr':
-            if snow_amount < 0.1:
-                return "가벼운눈"
-            elif snow_amount < 2:
-                return "약한눈"
-            else:
-                return "굵은눈"
-        else:
-            if snow_amount < 0.1:
-                return "Light Snow"
-            elif snow_amount < 2:
-                return "Moderate Snow"
-            else:
-                return "Heavy Snow" 
+            return "☠️"  # 위험 
