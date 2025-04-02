@@ -2,4 +2,5 @@
 .env
 .venv
 .vscode
+*.log
 __pycache__/
