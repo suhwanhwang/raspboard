@@ -148,11 +148,10 @@ class WeatherWidgets:
 
         # Update air quality
         aqi_text = self.get_air_quality_text(weather_data.current.air_quality)
-        aqi_icon = self.get_air_quality_icon(weather_data.current.air_quality)
-
+        
         if self.language == 'kr':
             self.air_quality_label.config(
-                text=f"대기질: {aqi_icon} {aqi_text}"
+                text=f"대기질: {aqi_text}"
             )
             # Update precipitation amounts
             if weather_data.current.rain_amount > 0:
@@ -166,7 +165,7 @@ class WeatherWidgets:
                 self.snow_label.config(text="")
         else:
             self.air_quality_label.config(
-                text=f"Air Quality: {aqi_icon} {aqi_text}"
+                text=f"Air Quality: {aqi_text}"
             )
             # Update precipitation amounts
             if weather_data.current.rain_amount > 0:
