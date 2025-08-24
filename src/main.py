@@ -6,7 +6,8 @@ import time
 import logging
 import requests
 from concurrent.futures import ThreadPoolExecutor, Future
-from typing import Optional
+from typing import Optional, Callable
+from queue import Queue, Empty
 from .config.settings import Settings
 from .api.openweather_api import OpenWeatherAPI
 from .ui.weather_widgets import WeatherWidgets
@@ -26,6 +27,7 @@ class WeatherFrame(tk.Tk):
         self.last_successful_update = time.time()
         self.is_fetching_weather: bool = False
         self.executor: Optional[ThreadPoolExecutor] = None
+        self.ui_queue: Queue[Callable[[], None]] = Queue()
         self.setup_environment()
         self.setup_window()
         self.create_widgets()
@@ -43,7 +45,8 @@ class WeatherFrame(tk.Tk):
         self.configure(bg='black')
         self.main_frame = tk.Frame(self, bg='black')
         self.main_frame.pack(expand=True, fill='both')
-        self.bind('<Escape>', lambda e: self.quit())
+        self.bind('<Escape>', self.on_close)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         # Hide mouse cursor
         self.config(cursor="none")
 
@@ -67,6 +70,8 @@ class WeatherFrame(tk.Tk):
         self.after(1000, self.update_time)  # Update time every second
         self.after(300000, self.log_system_stats)  # Log system stats every 5 minutes
         self.after(3600000, self.cleanup)  # Run cleanup every hour
+        # Start processing queued UI updates from worker threads
+        self.after(100, self.process_ui_queue)
 
     def update_time(self):
         self.weather_widgets.update_time(datetime.now())
@@ -118,8 +123,8 @@ class WeatherFrame(tk.Tk):
                         logging.info("Weather update successful")
                     self.consecutive_errors = 0
                     self.last_successful_update = time.time()
-                # Ensure UI updates happen on the Tkinter main thread
-                self.after(0, _apply_update)
+                # Queue for execution on Tk main thread
+                self.ui_queue.put(_apply_update)
             except requests.exceptions.RequestException as req_err:
                 self.consecutive_errors += 1
                 error_type = type(req_err).__name__
@@ -140,11 +145,37 @@ class WeatherFrame(tk.Tk):
                 logging.error(f"Consecutive errors: {self.consecutive_errors}")
             finally:
                 self.is_fetching_weather = False
-                # Always schedule the next update check
-                self.after(300000, self.update_weather)
+                # Schedule the next update on the Tk main thread
+                self.ui_queue.put(lambda: self.after(300000, self.update_weather))
 
         # Attach completion callback without blocking main thread
         future.add_done_callback(_on_done)
+
+    def process_ui_queue(self):
+        try:
+            while True:
+                task = self.ui_queue.get_nowait()
+                try:
+                    task()
+                except Exception as e:
+                    logging.error(f"Error processing UI task: {str(e)}", exc_info=True)
+        except Empty:
+            pass
+        # Keep polling
+        self.after(100, self.process_ui_queue)
+
+    def on_close(self, *_args):
+        try:
+            if self.executor is not None:
+                # Non-blocking shutdown; cancel pending futures where possible
+                self.executor.shutdown(wait=False, cancel_futures=True)
+        except Exception:
+            pass
+        # Destroy the window (ends mainloop)
+        try:
+            self.destroy()
+        except Exception:
+            pass
 
 def main():
     try:
