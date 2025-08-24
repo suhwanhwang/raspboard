@@ -7,22 +7,26 @@ class OpenWeatherAPI(WeatherAPI):
         self.api_key = api_key
         self.language = language
         self.base_url = "http://api.openweathermap.org/data/2.5"
+        # Reuse a single HTTP session for connection pooling and lower latency
+        self.session = requests.Session()
+        # Default timeouts: (connect_timeout, read_timeout)
+        self._timeout = (3, 5)
 
     def get_current_weather(self, city: str) -> Dict[str, Any]:
         url = f"{self.base_url}/weather?q={city}&appid={self.api_key}&units=metric&lang={self.language}"
-        response = requests.get(url)
+        response = self.session.get(url, timeout=self._timeout)
         response.raise_for_status()
         return response.json()
 
     def get_air_quality(self, lat: float, lon: float) -> Dict[str, Any]:
         url = f"{self.base_url}/air_pollution?lat={lat}&lon={lon}&appid={self.api_key}"
-        response = requests.get(url)
+        response = self.session.get(url, timeout=self._timeout)
         response.raise_for_status()
         return response.json()
 
     def get_forecast(self, city: str) -> Dict[str, Any]:
         url = f"{self.base_url}/forecast?q={city}&appid={self.api_key}&units=metric&lang={self.language}"
-        response = requests.get(url)
+        response = self.session.get(url, timeout=self._timeout)
         response.raise_for_status()
         return response.json()
 

@@ -2,13 +2,16 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import requests
 import io
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from ..models.weather_data import WeatherData
 
 class WeatherWidgets:
-    def __init__(self, parent: tk.Frame, language: str = 'en'):
+    def __init__(self, parent: tk.Frame, language: str = 'en', session: Optional[requests.Session] = None):
         self.parent = parent
         self.language = language
+        self.session = session or requests.Session()
+        self._icon_cache: Dict[str, ImageTk.PhotoImage] = {}
+        self._timeout = (3, 5)
         self.setup_widgets()
 
     def setup_widgets(self):
@@ -185,17 +188,26 @@ class WeatherWidgets:
             self.temp_max_label.config(text=f"↑{round(first_day.temp_max)}°")
 
     def update_weather_icon(self, icon_code: str, label: tk.Label, size: str = '2x'):
-        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@{size}.png"
-        icon_response = requests.get(icon_url)
-        if icon_response.status_code != 200:
-            print(f"Error: Failed to fetch weather icon. Status code: {icon_response.status_code}")
+        cache_key = f"{icon_code}@{size}"
+        if cache_key in self._icon_cache:
+            icon_photo = self._icon_cache[cache_key]
+            label.config(image=icon_photo)
+            label.image = icon_photo
             return
-            
-        icon_image = Image.open(io.BytesIO(icon_response.content))
-        icon_photo = ImageTk.PhotoImage(icon_image)
-        
-        label.config(image=icon_photo)
-        label.image = icon_photo  # Keep a reference
+
+        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@{size}.png"
+        try:
+            icon_response = self.session.get(icon_url, timeout=self._timeout)
+            if icon_response.status_code != 200:
+                print(f"Error: Failed to fetch weather icon. Status code: {icon_response.status_code}")
+                return
+            icon_image = Image.open(io.BytesIO(icon_response.content))
+            icon_photo = ImageTk.PhotoImage(icon_image)
+            self._icon_cache[cache_key] = icon_photo
+            label.config(image=icon_photo)
+            label.image = icon_photo  # Keep a reference
+        except requests.RequestException as e:
+            print(f"Error fetching icon: {e}")
 
     def get_air_quality_text(self, aqi: int) -> str:
         if self.language == 'kr':

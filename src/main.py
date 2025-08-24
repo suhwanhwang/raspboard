@@ -5,6 +5,8 @@ import gc
 import time
 import logging
 import requests
+from concurrent.futures import ThreadPoolExecutor, Future
+from typing import Optional
 from .config.settings import Settings
 from .api.openweather_api import OpenWeatherAPI
 from .ui.weather_widgets import WeatherWidgets
@@ -22,6 +24,8 @@ class WeatherFrame(tk.Tk):
         super().__init__()
         self.consecutive_errors = 0
         self.last_successful_update = time.time()
+        self.is_fetching_weather: bool = False
+        self.executor: Optional[ThreadPoolExecutor] = None
         self.setup_environment()
         self.setup_window()
         self.create_widgets()
@@ -30,6 +34,8 @@ class WeatherFrame(tk.Tk):
     def setup_environment(self):
         self.settings = Settings()
         self.weather_api = OpenWeatherAPI(self.settings.api_key, self.settings.language)
+        # Thread pool to move blocking network calls off the Tkinter main thread
+        self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="weather-worker")
 
     def setup_window(self):
         self.title("Weather Frame")
@@ -42,7 +48,8 @@ class WeatherFrame(tk.Tk):
         self.config(cursor="none")
 
     def create_widgets(self):
-        self.weather_widgets = WeatherWidgets(self.main_frame, self.settings.language)
+        # Reuse the same HTTP session used by the API for icon fetching
+        self.weather_widgets = WeatherWidgets(self.main_frame, self.settings.language, session=self.weather_api.session)
 
     def log_system_stats(self):
         try:
@@ -71,65 +78,73 @@ class WeatherFrame(tk.Tk):
         self.after(3600000, self.cleanup)
 
     def update_weather(self):
-        try:
-            # If there were consecutive errors, wait before retrying
-            if self.consecutive_errors > 0:
-                # Calculate wait time based on consecutive errors (exponential backoff)
-                # Wait 5 mins * 2^(errors-1), up to a max of ~1 hour (12 * 5 mins)
-                wait_factor = 2**(min(self.consecutive_errors, 5) - 1) # Limit exponent to avoid excessive wait
-                wait_time_seconds = 300 * wait_factor 
-                # Check if enough time has passed since the last attempt
-                if time.time() - self.last_successful_update < wait_time_seconds:
-                    logging.info(f"Waiting {wait_time_seconds} seconds before retry due to {self.consecutive_errors} previous errors.")
-                    # No need to schedule again here, finally block will do it
-                    return
-                else:
-                     logging.info(f"Attempting update after waiting period. Consecutive errors: {self.consecutive_errors}")
+        # If there were consecutive errors, wait before retrying (exponential backoff)
+        if self.consecutive_errors > 0:
+            wait_factor = 2**(min(self.consecutive_errors, 5) - 1)  # Limit exponent to avoid excessive wait
+            wait_time_seconds = 300 * wait_factor
+            if time.time() - self.last_successful_update < wait_time_seconds:
+                logging.info(f"Waiting {wait_time_seconds} seconds before retry due to {self.consecutive_errors} previous errors.")
+                self.after(300000, self.update_weather)
+                return
+            else:
+                logging.info(f"Attempting update after waiting period. Consecutive errors: {self.consecutive_errors}")
 
+        if self.is_fetching_weather:
+            # Avoid overlapping fetches
+            self.after(300000, self.update_weather)
+            return
+
+        self.is_fetching_weather = True
+
+        def _fetch() -> WeatherData:
             current_data = self.weather_api.get_current_weather(self.settings.city)
             air_data = self.weather_api.get_air_quality(
                 current_data['coord']['lat'],
                 current_data['coord']['lon']
             )
             forecast_data = self.weather_api.get_forecast(self.settings.city)
+            return WeatherData.from_api_response(current_data, air_data, forecast_data)
 
-            weather_data = WeatherData.from_api_response(current_data, air_data, forecast_data)
-            self.weather_widgets.update_weather(weather_data)
+        future: Future = self.executor.submit(_fetch)
 
-            # Reset error counter on success
-            if self.consecutive_errors > 0:
-                logging.info(f"Weather update successful after {self.consecutive_errors} failures.")
-            else:
-                 logging.info("Weather update successful")
-            self.consecutive_errors = 0
-            self.last_successful_update = time.time() # Record time of last successful update
+        def _on_done(fut: Future):
+            try:
+                weather_data: WeatherData = fut.result()
+                def _apply_update():
+                    self.weather_widgets.update_weather(weather_data)
+                    if self.consecutive_errors > 0:
+                        logging.info(f"Weather update successful after {self.consecutive_errors} failures.")
+                    else:
+                        logging.info("Weather update successful")
+                    self.consecutive_errors = 0
+                    self.last_successful_update = time.time()
+                # Ensure UI updates happen on the Tkinter main thread
+                self.after(0, _apply_update)
+            except requests.exceptions.RequestException as req_err:
+                self.consecutive_errors += 1
+                error_type = type(req_err).__name__
+                error_msg = str(req_err)
+                log_level = logging.WARNING
+                if "NameResolutionError" in error_msg:
+                    log_level = logging.ERROR
+                    logging.error("DNS Resolution failed for api.openweathermap.org. Check network/DNS settings.")
+                else:
+                    logging.warning(f"API Request failed: {error_msg}")
+                logging.log(log_level, f"Error updating weather: {error_msg}")
+                logging.log(log_level, f"Full error details: {error_type}")
+                logging.log(log_level, f"Consecutive errors: {self.consecutive_errors}")
+            except Exception as e:
+                self.consecutive_errors += 1
+                logging.error(f"Unexpected error during weather update: {str(e)}", exc_info=True)
+                logging.error(f"Full error details: {type(e).__name__}")
+                logging.error(f"Consecutive errors: {self.consecutive_errors}")
+            finally:
+                self.is_fetching_weather = False
+                # Always schedule the next update check
+                self.after(300000, self.update_weather)
 
-        except requests.exceptions.RequestException as req_err:
-            self.consecutive_errors += 1
-            error_type = type(req_err).__name__
-            error_msg = str(req_err)
-            log_level = logging.WARNING # Default level for request errors
-            if "NameResolutionError" in error_msg:
-                log_level = logging.ERROR # Elevate log level for DNS issues
-                logging.error("DNS Resolution failed for api.openweathermap.org. Check network/DNS settings.")
-            else:
-                 logging.warning(f"API Request failed: {error_msg}")
-
-            logging.log(log_level, f"Error updating weather: {error_msg}")
-            logging.log(log_level, f"Full error details: {error_type}")
-            logging.log(log_level, f"Consecutive errors: {self.consecutive_errors}")
-            # last_successful_update remains unchanged on error
-
-        except Exception as e:
-            self.consecutive_errors += 1
-            logging.error(f"Unexpected error during weather update: {str(e)}", exc_info=True)
-            logging.error(f"Full error details: {type(e).__name__}")
-            logging.error(f"Consecutive errors: {self.consecutive_errors}")
-            # last_successful_update remains unchanged on error
-
-        finally:
-            # Always schedule the next update check
-            self.after(300000, self.update_weather) # Schedule next check in 5 minutes
+        # Attach completion callback without blocking main thread
+        future.add_done_callback(_on_done)
 
 def main():
     try:
