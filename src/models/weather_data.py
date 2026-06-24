@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 
 @dataclass
 class WeatherCondition:
@@ -20,11 +20,9 @@ class CurrentWeather:
 
 @dataclass
 class DailyForecast:
-    date: datetime
-    temperature: float
+    date: date
     temp_min: float
     temp_max: float
-    weather: WeatherCondition
 
 @dataclass
 class WeatherData:
@@ -51,33 +49,18 @@ class WeatherData:
             snow_amount=snow_amount
         )
 
-        daily_forecasts = {}
+        # Aggregate the 3-hour forecast slots into a daily min/max range.
+        daily_forecasts: Dict[date, DailyForecast] = {}
         for item in forecast_data['list']:
-            date = datetime.fromtimestamp(item['dt']).date()
-            
-            if date not in daily_forecasts:
-                daily_forecasts[date] = DailyForecast(
-                    date=date,
-                    temperature=item['main']['temp'],
-                    temp_min=item['main']['temp_min'],
-                    temp_max=item['main']['temp_max'],
-                    weather=WeatherCondition(
-                        description=item['weather'][0]['description'],
-                        icon=item['weather'][0]['icon']
-                    )
-                )
+            day = datetime.fromtimestamp(item['dt']).date()
+            temp_min = item['main']['temp_min']
+            temp_max = item['main']['temp_max']
+            if day not in daily_forecasts:
+                daily_forecasts[day] = DailyForecast(date=day, temp_min=temp_min, temp_max=temp_max)
             else:
-                # Update min/max temperatures
-                daily_forecasts[date].temp_min = min(daily_forecasts[date].temp_min, item['main']['temp_min'])
-                daily_forecasts[date].temp_max = max(daily_forecasts[date].temp_max, item['main']['temp_max'])
-                # Update weather if it's during daytime (between 9 AM and 6 PM)
-                hour = datetime.fromtimestamp(item['dt']).hour
-                if 9 <= hour <= 18:
-                    daily_forecasts[date].temperature = item['main']['temp']
-                    daily_forecasts[date].weather = WeatherCondition(
-                        description=item['weather'][0]['description'],
-                        icon=item['weather'][0]['icon']
-                    )
+                forecast = daily_forecasts[day]
+                forecast.temp_min = min(forecast.temp_min, temp_min)
+                forecast.temp_max = max(forecast.temp_max, temp_max)
         return cls(
             current=current,
             forecast=list(daily_forecasts.values())[:5]  # Get only 5 days of forecast
