@@ -41,7 +41,6 @@ class WeatherFrame(tk.Tk):
 
     def setup_window(self):
         self.title("Weather Frame")
-        self.attributes('-fullscreen', True)
         self.configure(bg='black')
         self.main_frame = tk.Frame(self, bg='black')
         self.main_frame.pack(expand=True, fill='both')
@@ -49,6 +48,23 @@ class WeatherFrame(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         # Hide mouse cursor
         self.config(cursor="none")
+        # On Raspberry Pi OS Bookworm (Wayland/labwc via XWayland), setting
+        # -fullscreen before the window is mapped can leave the window
+        # unmapped: the app runs fine but no window ever appears. Because it
+        # races with the compositor being ready, it shows up only some boots.
+        # Map the window at screen size first, then assert fullscreen and
+        # raise it once the event loop is running.
+        self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
+        self.after(200, self._enter_fullscreen)
+
+    def _enter_fullscreen(self):
+        try:
+            self.deiconify()
+            self.attributes('-fullscreen', True)
+            self.lift()
+            self.focus_force()
+        except tk.TclError as e:
+            logging.warning(f"Failed to enter fullscreen: {e}")
 
     def create_widgets(self):
         # Reuse the same HTTP session used by the API for icon fetching
