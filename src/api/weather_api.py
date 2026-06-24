@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
-from datetime import datetime
+from typing import Dict, Any
 
 class WeatherAPI(ABC):
     @abstractmethod
