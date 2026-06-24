@@ -48,16 +48,21 @@ class WeatherFrame(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         # Hide mouse cursor
         self.config(cursor="none")
-        # On Raspberry Pi OS Bookworm (Wayland/labwc via XWayland), setting
-        # -fullscreen before the window is mapped can leave the window
-        # unmapped: the app runs fine but no window ever appears. Because it
-        # races with the compositor being ready, it shows up only some boots.
-        # Map the window at screen size first, then assert fullscreen and
-        # raise it once the event loop is running.
+        # On Raspberry Pi OS Bookworm (Wayland/labwc via XWayland) the
+        # compositor drops the fullscreen request if it arrives before the
+        # window is mapped. A fixed delay raced the compositor, so fullscreen
+        # (and the window itself) only worked on some boots. Size the window to
+        # the screen first, then wait for the real <Map> event before asserting
+        # fullscreen, and re-assert a few times to beat any remaining race.
         self.geometry(f"{self.winfo_screenwidth()}x{self.winfo_screenheight()}+0+0")
-        self.after(200, self._enter_fullscreen)
+        self.bind('<Map>', self._on_first_map)
 
-    def _enter_fullscreen(self):
+    def _on_first_map(self, _event):
+        # Only act on the toplevel's own first map, then stop listening.
+        self.unbind('<Map>')
+        self._enter_fullscreen()
+
+    def _enter_fullscreen(self, attempts: int = 3):
         try:
             self.deiconify()
             self.attributes('-fullscreen', True)
@@ -65,6 +70,11 @@ class WeatherFrame(tk.Tk):
             self.focus_force()
         except tk.TclError as e:
             logging.warning(f"Failed to enter fullscreen: {e}")
+            return
+        # Setting fullscreen again when already fullscreen is a harmless no-op,
+        # but if the first request landed too early for labwc, a later one wins.
+        if attempts > 1:
+            self.after(250, lambda: self._enter_fullscreen(attempts - 1))
 
     def create_widgets(self):
         # Reuse the same HTTP session used by the API for icon fetching
