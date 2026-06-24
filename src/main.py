@@ -64,11 +64,12 @@ class WeatherFrame(tk.Tk):
             logging.error(f"Error logging system stats: {str(e)}")
 
     def start_updates(self):
-        self.update_weather()
-        self.update_time()
-        self.after(300000, self.update_weather)  # Update weather every 5 minutes
-        self.after(1000, self.update_time)  # Update time every second
-        self.after(300000, self.log_system_stats)  # Log system stats every 5 minutes
+        # update_weather and update_time each re-schedule themselves, so they
+        # must only be kicked off once here. Adding extra after() calls would
+        # spawn duplicate timer chains (time updating twice a second, etc.).
+        self.update_weather()  # re-schedules itself every 5 minutes
+        self.update_time()  # re-schedules itself every second
+        self.after(300000, self.log_system_stats)  # Log system stats
         self.after(3600000, self.cleanup)  # Run cleanup every hour
         # Start processing queued UI updates from worker threads
         self.after(100, self.process_ui_queue)

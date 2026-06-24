@@ -195,7 +195,7 @@ class WeatherWidgets:
             label.image = icon_photo
             return
 
-        icon_url = f"http://openweathermap.org/img/wn/{icon_code}@{size}.png"
+        icon_url = f"https://openweathermap.org/img/wn/{icon_code}@{size}.png"
         try:
             icon_response = self.session.get(icon_url, timeout=self._timeout)
             if icon_response.status_code != 200:
