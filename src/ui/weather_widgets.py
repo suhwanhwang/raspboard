@@ -2,7 +2,8 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import requests
 import io
-from typing import List, Dict, Any, Optional
+import logging
+from typing import Dict, Optional
 from ..models.weather_data import WeatherData
 
 class WeatherWidgets:
@@ -151,35 +152,14 @@ class WeatherWidgets:
 
         # Update air quality
         aqi_text = self.get_air_quality_text(weather_data.current.air_quality)
-        
-        if self.language == 'kr':
-            self.air_quality_label.config(
-                text=f"대기질: {aqi_text}"
-            )
-            # Update precipitation amounts
-            if weather_data.current.rain_amount > 0:
-                self.rain_label.config(text=f"🌧️ {weather_data.current.rain_amount:.1f}㎜/h")
-            else:
-                self.rain_label.config(text="")
-            
-            if weather_data.current.snow_amount > 0:
-                self.snow_label.config(text=f"🌨️ {weather_data.current.snow_amount:.1f}㎜/h")
-            else:
-                self.snow_label.config(text="")
-        else:
-            self.air_quality_label.config(
-                text=f"Air Quality: {aqi_text}"
-            )
-            # Update precipitation amounts
-            if weather_data.current.rain_amount > 0:
-                self.rain_label.config(text=f"🌧️ {weather_data.current.rain_amount:.1f}㎜/h")
-            else:
-                self.rain_label.config(text="")
-            
-            if weather_data.current.snow_amount > 0:
-                self.snow_label.config(text=f"🌨️ {weather_data.current.snow_amount:.1f}㎜/h")
-            else:
-                self.snow_label.config(text="")
+        aqi_label = "대기질" if self.language == 'kr' else "Air Quality"
+        self.air_quality_label.config(text=f"{aqi_label}: {aqi_text}")
+
+        # Update precipitation amounts (same format for both languages)
+        rain = weather_data.current.rain_amount
+        snow = weather_data.current.snow_amount
+        self.rain_label.config(text=f"🌧️ {rain:.1f}㎜/h" if rain > 0 else "")
+        self.snow_label.config(text=f"🌨️ {snow:.1f}㎜/h" if snow > 0 else "")
 
         # Update temperature range for the first day of forecast
         if weather_data.forecast and len(weather_data.forecast) > 0:
@@ -199,7 +179,7 @@ class WeatherWidgets:
         try:
             icon_response = self.session.get(icon_url, timeout=self._timeout)
             if icon_response.status_code != 200:
-                print(f"Error: Failed to fetch weather icon. Status code: {icon_response.status_code}")
+                logging.warning(f"Failed to fetch weather icon. Status code: {icon_response.status_code}")
                 return
             icon_image = Image.open(io.BytesIO(icon_response.content))
             icon_photo = ImageTk.PhotoImage(icon_image)
@@ -207,7 +187,7 @@ class WeatherWidgets:
             label.config(image=icon_photo)
             label.image = icon_photo  # Keep a reference
         except requests.RequestException as e:
-            print(f"Error fetching icon: {e}")
+            logging.warning(f"Error fetching icon: {e}")
 
     def get_air_quality_text(self, aqi: int) -> str:
         if self.language == 'kr':
@@ -231,28 +211,4 @@ class WeatherWidgets:
             elif aqi == 4:
                 return "Very Poor"
             else:
-                return "Hazardous"
-
-    def get_air_quality_color(self, aqi: int) -> str:
-        if aqi == 1:
-            return '#4CAF50'  # Green
-        elif aqi == 2:
-            return '#FFC107'  # Yellow
-        elif aqi == 3:
-            return '#FF9800'  # Orange
-        elif aqi == 4:
-            return '#F44336'  # Red
-        else:
-            return '#9C27B0'  # Purple
-
-    def get_air_quality_icon(self, aqi: int) -> str:
-        if aqi == 1:
-            return "😊"  # 좋음
-        elif aqi == 2:
-            return "😐"  # 보통
-        elif aqi == 3:
-            return "😷"  # 나쁨
-        elif aqi == 4:
-            return "🤢"  # 매우 나쁨
-        else:
-            return "☠️"  # 위험 
+                return "Hazardous" 
