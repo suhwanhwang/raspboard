@@ -162,7 +162,7 @@ class WeatherWidgets:
         self.snow_label.config(text=f"🌨️ {snow:.1f}㎜/h" if snow > 0 else "")
 
         # Update temperature range for the first day of forecast
-        if weather_data.forecast and len(weather_data.forecast) > 0:
+        if weather_data.forecast:
             first_day = weather_data.forecast[0]
             self.temp_min_label.config(text=f"↓{round(first_day.temp_min)}°")
             self.temp_max_label.config(text=f"↑{round(first_day.temp_max)}°")
