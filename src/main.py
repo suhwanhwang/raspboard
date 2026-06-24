@@ -88,6 +88,8 @@ class WeatherFrame(tk.Tk):
             logging.info(f"CPU usage: {process.cpu_percent()}%")
         except Exception as e:
             logging.error(f"Error logging system stats: {str(e)}")
+        finally:
+            self.after(300000, self.log_system_stats)  # Re-schedule every 5 minutes
 
     def start_updates(self):
         # update_weather and update_time each re-schedule themselves, so they
@@ -105,8 +107,9 @@ class WeatherFrame(tk.Tk):
         self.after(1000, self.update_time)
 
     def cleanup(self):
+        # log_system_stats() re-schedules itself every 5 minutes, so don't call
+        # it here too — that would fork a second timer chain.
         gc.collect()  # Force garbage collection
-        self.log_system_stats()
         self.after(3600000, self.cleanup)
 
     def update_weather(self):
@@ -140,43 +143,51 @@ class WeatherFrame(tk.Tk):
         future: Future = self.executor.submit(_fetch)
 
         def _on_done(fut: Future):
+            # Runs on a worker thread. Marshal everything back to the Tk main
+            # thread via ui_queue so shared state (consecutive_errors,
+            # is_fetching_weather, ...) is only ever touched from one thread.
             try:
                 weather_data: WeatherData = fut.result()
-                def _apply_update():
-                    self.weather_widgets.update_weather(weather_data)
-                    if self.consecutive_errors > 0:
-                        logging.info(f"Weather update successful after {self.consecutive_errors} failures.")
-                    else:
-                        logging.info("Weather update successful")
-                    self.consecutive_errors = 0
-                    self.last_successful_update = time.time()
-                # Queue for execution on Tk main thread
-                self.ui_queue.put(_apply_update)
-            except requests.exceptions.RequestException as req_err:
-                self.consecutive_errors += 1
-                error_type = type(req_err).__name__
-                error_msg = str(req_err)
-                log_level = logging.WARNING
-                if "NameResolutionError" in error_msg:
-                    log_level = logging.ERROR
-                    logging.error("DNS Resolution failed for api.openweathermap.org. Check network/DNS settings.")
-                else:
-                    logging.warning(f"API Request failed: {error_msg}")
-                logging.log(log_level, f"Error updating weather: {error_msg}")
-                logging.log(log_level, f"Full error details: {error_type}")
-                logging.log(log_level, f"Consecutive errors: {self.consecutive_errors}")
-            except Exception as e:
-                self.consecutive_errors += 1
-                logging.error(f"Unexpected error during weather update: {str(e)}", exc_info=True)
-                logging.error(f"Full error details: {type(e).__name__}")
-                logging.error(f"Consecutive errors: {self.consecutive_errors}")
+            except Exception as err:
+                self.ui_queue.put(lambda e=err: self._handle_weather_failure(e))
+            else:
+                self.ui_queue.put(lambda: self._handle_weather_success(weather_data))
             finally:
-                self.is_fetching_weather = False
-                # Schedule the next update on the Tk main thread
-                self.ui_queue.put(lambda: self.after(300000, self.update_weather))
+                self.ui_queue.put(self._finish_weather_cycle)
 
         # Attach completion callback without blocking main thread
         future.add_done_callback(_on_done)
+
+    def _handle_weather_success(self, weather_data: WeatherData):
+        self.weather_widgets.update_weather(weather_data)
+        if self.consecutive_errors > 0:
+            logging.info(f"Weather update successful after {self.consecutive_errors} failures.")
+        else:
+            logging.info("Weather update successful")
+        self.consecutive_errors = 0
+        self.last_successful_update = time.time()
+
+    def _handle_weather_failure(self, err: Exception):
+        self.consecutive_errors += 1
+        if isinstance(err, requests.exceptions.RequestException):
+            error_msg = str(err)
+            if "NameResolutionError" in error_msg:
+                log_level = logging.ERROR
+                logging.error("DNS Resolution failed for api.openweathermap.org. Check network/DNS settings.")
+            else:
+                log_level = logging.WARNING
+                logging.warning(f"API Request failed: {error_msg}")
+            logging.log(log_level, f"Error updating weather: {error_msg}")
+            logging.log(log_level, f"Full error details: {type(err).__name__}")
+            logging.log(log_level, f"Consecutive errors: {self.consecutive_errors}")
+        else:
+            logging.error(f"Unexpected error during weather update: {str(err)}", exc_info=err)
+            logging.error(f"Full error details: {type(err).__name__}")
+            logging.error(f"Consecutive errors: {self.consecutive_errors}")
+
+    def _finish_weather_cycle(self):
+        self.is_fetching_weather = False
+        self.after(300000, self.update_weather)
 
     def process_ui_queue(self):
         try:
