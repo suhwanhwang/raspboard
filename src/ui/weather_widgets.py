@@ -19,10 +19,29 @@ class WeatherWidgets:
         # Create main container frame for centering
         self.container_frame = tk.Frame(self.parent, bg='black')
         self.container_frame.place(relx=0.5, rely=0.5, anchor='center')
-        
+
         self.create_time_widgets()
         self.create_weather_widgets()
         self.create_temperature_range_widgets()
+        self.create_network_status_widget()
+
+    def create_network_status_widget(self):
+        # Corner-anchored on the parent (not the centered container) so it
+        # stays visible regardless of the main content's layout.
+        self.network_status_label = tk.Label(
+            self.parent,
+            font=('Helvetica', 24),
+            foreground='#ff4d4d',
+            bg='black'
+        )
+        self.network_status_label.place(relx=0.98, rely=0.02, anchor='ne')
+
+    def set_network_status(self, is_offline: bool):
+        if is_offline:
+            text = "⚠ 네트워크 연결 끊김" if self.language == 'kr' else "⚠ Network Offline"
+        else:
+            text = ""
+        self.network_status_label.config(text=text)
 
     def create_time_widgets(self):
         # Date label
