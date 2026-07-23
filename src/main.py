@@ -2,6 +2,7 @@ import tkinter as tk
 from datetime import datetime
 import psutil
 import gc
+import re
 import time
 import logging
 import requests
@@ -19,6 +20,17 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# Requests embeds the full request URL (including the appid query param)
+# in connection-error messages, so it must be stripped before logging.
+_APPID_PATTERN = re.compile(r'appid=[^&\s]+')
+
+def _redact_api_key(message: str) -> str:
+    return _APPID_PATTERN.sub('appid=***', message)
+
+# Number of consecutive failures before the on-screen network warning
+# appears, so a single transient blip doesn't flash a warning at the user.
+_NETWORK_WARNING_THRESHOLD = 2
 
 class WeatherFrame(tk.Tk):
     def __init__(self):
@@ -166,11 +178,12 @@ class WeatherFrame(tk.Tk):
             logging.info("Weather update successful")
         self.consecutive_errors = 0
         self.last_successful_update = time.time()
+        self.weather_widgets.set_network_status(False)
 
     def _handle_weather_failure(self, err: Exception):
         self.consecutive_errors += 1
         if isinstance(err, requests.exceptions.RequestException):
-            error_msg = str(err)
+            error_msg = _redact_api_key(str(err))
             if "NameResolutionError" in error_msg:
                 log_level = logging.ERROR
                 logging.error("DNS Resolution failed for api.openweathermap.org. Check network/DNS settings.")
@@ -181,9 +194,12 @@ class WeatherFrame(tk.Tk):
             logging.log(log_level, f"Full error details: {type(err).__name__}")
             logging.log(log_level, f"Consecutive errors: {self.consecutive_errors}")
         else:
-            logging.error(f"Unexpected error during weather update: {str(err)}", exc_info=err)
+            logging.error(f"Unexpected error during weather update: {_redact_api_key(str(err))}", exc_info=err)
             logging.error(f"Full error details: {type(err).__name__}")
             logging.error(f"Consecutive errors: {self.consecutive_errors}")
+
+        if self.consecutive_errors >= _NETWORK_WARNING_THRESHOLD:
+            self.weather_widgets.set_network_status(True)
 
     def _finish_weather_cycle(self):
         self.is_fetching_weather = False
